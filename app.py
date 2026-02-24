@@ -1,5 +1,6 @@
 import streamlit as st
 from openpyxl import load_workbook
+from openpyxl.cell.cell import MergedCell
 from copy import copy
 from io import BytesIO
 
@@ -51,21 +52,22 @@ if uploaded_f101:
     for col in hoja_origen.column_dimensions:
         hoja_destino.column_dimensions[col].width = hoja_origen.column_dimensions[col].width
 
+    hoja_f101 = wb_base["F101"]
+
     # ==========================
     # INSERTAR FORMULAS AUTOMATICAS
     # ==========================
-    hoja_f101 = wb_base["F101"]
-
     for row in range(1, hoja_f101.max_row + 1):
 
         codigo_cell = hoja_f101.cell(row=row, column=14)  # Columna N
+        celda_resultado = hoja_f101.cell(row=row, column=15)  # Columna O
 
         if codigo_cell.value not in (None, ""):
 
-            hoja_f101.cell(
-                row=row,
-                column=15  # Columna O
-            ).value = f'=SUMAR.SI(BC!E:E;N{row};BC!D:D)'
+            # SOLO escribir si NO es celda combinada secundaria
+            if not isinstance(celda_resultado, MergedCell):
+
+                celda_resultado.value = f'=SUMAR.SI(BC!E:E;N{row};BC!D:D)'
 
     # ==========================
     # DEJAR SOLO BC Y F101
