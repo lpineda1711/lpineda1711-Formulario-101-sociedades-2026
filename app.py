@@ -13,13 +13,19 @@ uploaded_f101 = st.file_uploader(
 
 if uploaded_f101:
 
+    # ===============================
+    # CARGAR PLANTILLA BASE
+    # ===============================
     plantilla_path = "CT 2024 f101 ARCTURUS NUEVO.xlsx"
     wb_base = load_workbook(plantilla_path)
 
-    # Eliminar F101 viejo
+    # Eliminar F101 anterior
     if "F101" in wb_base.sheetnames:
         wb_base.remove(wb_base["F101"])
 
+    # ===============================
+    # CARGAR F101 SUBIDO
+    # ===============================
     wb_nuevo = load_workbook(uploaded_f101)
     hoja_origen = wb_nuevo.active
 
@@ -53,22 +59,45 @@ if uploaded_f101:
     # VINCULAR F101 CON BC (FORMULAS)
     # ===============================
     if "BC" in wb_base.sheetnames:
+
         hoja_bc = wb_base["BC"]
+        merged_ranges = hoja_destino.merged_cells.ranges
 
         fila_inicio = 1
         fila_fin = hoja_destino.max_row
 
         for fila in range(fila_inicio, fila_fin + 1):
-            codigo = hoja_destino[f"N{fila}"].value
+            codigo_cell = hoja_destino[f"N{fila}"]
+            destino_cell = hoja_destino[f"O{fila}"]
 
-            if codigo not in (None, ""):
-                hoja_destino[f"O{fila}"] = (
-                    f'=SUMAR.SI(BC!$E:$E;F101!N{fila};BC!$D:$D)'
-                )
+            # Saltar filas sin código
+            if codigo_cell.value in (None, ""):
+                continue
 
-    # Reordenar hojas (BC primero)
+            # Verificar si la celda O está combinada
+            escribir = True
+            for merged in merged_ranges:
+                if destino_cell.coordinate in merged:
+                    # Solo permitir escribir en la celda superior izquierda
+                    if destino_cell.coordinate != merged.start_cell.coordinate:
+                        escribir = False
+                    break
+
+            if not escribir:
+                continue
+
+            destino_cell.value = (
+                f'=SUMAR.SI(BC!$E:$E;F101!N{fila};BC!$D:$D)'
+            )
+
+    # ===============================
+    # REORDENAR HOJAS (BC PRIMERO)
+    # ===============================
     wb_base._sheets.sort(key=lambda ws: ws.title != "BC")
 
+    # ===============================
+    # EXPORTAR ARCHIVO FINAL
+    # ===============================
     output = BytesIO()
     wb_base.save(output)
     output.seek(0)
