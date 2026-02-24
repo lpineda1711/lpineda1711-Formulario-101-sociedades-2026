@@ -4,7 +4,9 @@ import tempfile
 import shutil
 import os
 
-st.title("Generador F101 con Plantilla Oficial")
+st.set_page_config(page_title="Generador F101 Oficial", layout="wide")
+
+st.title("Generador F101 desde Formulario Renta Sociedades")
 
 uploaded_formulario = st.file_uploader(
     "Sube el FORMULARIO RENTA SOCIEDADES-1 (.xlsx)",
@@ -20,29 +22,30 @@ if uploaded_formulario is not None:
         plantilla_temp = os.path.join(tmpdir, "plantilla.xlsx")
         formulario_temp = os.path.join(tmpdir, "formulario.xlsx")
 
-        # Guardar archivos temporales
+        # Guardar formulario subido
         with open(formulario_temp, "wb") as f:
             f.write(uploaded_formulario.read())
 
+        # Copiar plantilla
         shutil.copy(plantilla_path, plantilla_temp)
 
         # Cargar plantilla
         wb = load_workbook(plantilla_temp)
 
-        # Cargar formulario subido
+        # Cargar formulario
         wb_form = load_workbook(formulario_temp)
-
         hoja_form = wb_form.active
-        wb._add_sheet(hoja_form)
 
         hoja_form.title = "FORMULARIO_SUBIDO"
 
-        # Ahora actualizar fórmulas en F101
-        hoja_f101 = wb["F101"]  # asegúrate que se llame así en tu plantilla
+        wb._add_sheet(hoja_form)
+
+        # Modificar fórmulas en F101
+        hoja_f101 = wb["F101"]
 
         for row in hoja_f101.iter_rows():
             for cell in row:
-                if cell.value and isinstance(cell.value, str):
+                if isinstance(cell.value, str):
                     if "Casilleros!" in cell.value:
                         cell.value = cell.value.replace(
                             "Casilleros!",
@@ -54,9 +57,10 @@ if uploaded_formulario is not None:
 
         with open(archivo_final, "rb") as f:
             st.download_button(
-                "Descargar Excel Generado",
+                "Descargar Excel con F101 generado",
                 f,
-                file_name="F101_GENERADO.xlsx"
+                file_name="F101_GENERADO.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-        st.success("Archivo generado con formato original intacto.")
+        st.success("Archivo generado correctamente con formato original intacto.")
