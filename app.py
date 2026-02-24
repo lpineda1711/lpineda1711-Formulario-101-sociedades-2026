@@ -28,11 +28,11 @@ if uploaded_f101:
     hoja_destino = wb_base.create_sheet("F101")
 
     # ==========================
-    # COPIA COMPLETA CON ESTILOS
+    # COPIAR CONTENIDO CON ESTILOS
     # ==========================
     for row in hoja_origen.iter_rows():
         for cell in row:
-            new_cell = hoja_destino[cell.coordinate]
+            new_cell = hoja_destino.cell(row=cell.row, column=cell.column)
             new_cell.value = cell.value
 
             if cell.has_style:
@@ -54,14 +54,18 @@ if uploaded_f101:
     # ==========================
     # INSERTAR FORMULAS AUTOMATICAS
     # ==========================
-    hoja_bc = wb_base["BC"]
     hoja_f101 = wb_base["F101"]
 
     for row in range(1, hoja_f101.max_row + 1):
-        codigo_cell = hoja_f101[f"N{row}"]
 
-        if codigo_cell.value is not None:
-            hoja_f101[f"O{row}"] = f'=SUMAR.SI(BC!E:E;N{row};BC!D:D)'
+        codigo_cell = hoja_f101.cell(row=row, column=14)  # Columna N
+
+        if codigo_cell.value not in (None, ""):
+
+            hoja_f101.cell(
+                row=row,
+                column=15  # Columna O
+            ).value = f'=SUMAR.SI(BC!E:E;N{row};BC!D:D)'
 
     # ==========================
     # DEJAR SOLO BC Y F101
@@ -70,7 +74,7 @@ if uploaded_f101:
         if sheet not in ["BC", "F101"]:
             wb_base.remove(wb_base[sheet])
 
-    # Ordenar hojas
+    # Ordenar hojas (BC primero)
     wb_base._sheets.sort(key=lambda ws: ws.title != "BC")
 
     # Guardar archivo final
@@ -78,7 +82,7 @@ if uploaded_f101:
     wb_base.save(output)
     output.seek(0)
 
-    st.success("F101 pegado tal cual y vinculado con BC correctamente")
+    st.success("F101 pegado tal cual y vinculado correctamente con BC")
 
     st.download_button(
         "Descargar archivo final",
