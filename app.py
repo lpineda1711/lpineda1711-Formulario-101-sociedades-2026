@@ -25,7 +25,9 @@ if uploaded_f101:
 
     hoja_destino = wb_base.create_sheet("F101")
 
-    # COPIA COMPLETA CON ESTILOS
+    # ===============================
+    # COPIAR F101 COMPLETO CON ESTILOS
+    # ===============================
     for row in hoja_origen.iter_rows():
         for cell in row:
             new_cell = hoja_destino[cell.coordinate]
@@ -43,18 +45,35 @@ if uploaded_f101:
     for merged in hoja_origen.merged_cells.ranges:
         hoja_destino.merge_cells(str(merged))
 
-    # Copiar ancho columnas
+    # Copiar ancho de columnas
     for col in hoja_origen.column_dimensions:
         hoja_destino.column_dimensions[col].width = hoja_origen.column_dimensions[col].width
 
-    # Reordenar hojas
+    # ===============================
+    # VINCULAR F101 CON BC (FORMULAS)
+    # ===============================
+    if "BC" in wb_base.sheetnames:
+        hoja_bc = wb_base["BC"]
+
+        fila_inicio = 1
+        fila_fin = hoja_destino.max_row
+
+        for fila in range(fila_inicio, fila_fin + 1):
+            codigo = hoja_destino[f"N{fila}"].value
+
+            if codigo not in (None, ""):
+                hoja_destino[f"O{fila}"] = (
+                    f'=SUMAR.SI(BC!$E:$E;F101!N{fila};BC!$D:$D)'
+                )
+
+    # Reordenar hojas (BC primero)
     wb_base._sheets.sort(key=lambda ws: ws.title != "BC")
 
     output = BytesIO()
     wb_base.save(output)
     output.seek(0)
 
-    st.success("F101 pegado tal cual y vinculado con BC")
+    st.success("F101 pegado correctamente y vinculado con BC mediante fórmulas")
 
     st.download_button(
         "Descargar archivo final",
