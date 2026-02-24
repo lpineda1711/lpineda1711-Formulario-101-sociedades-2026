@@ -1,71 +1,62 @@
 import streamlit as st
-import pandas as pd
-import io
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill, Font
-from openpyxl.utils import get_column_letter
+import tempfile
+import shutil
+import os
 
-st.title("Generador Formulario Renta Sociedades")
+st.title("Generador F101 con Plantilla Oficial")
 
-uploaded_file = st.file_uploader("Sube el FORMULARIO RENTA SOCIEDADES-1", type=["xls", "xlsx"])
+uploaded_formulario = st.file_uploader(
+    "Sube el FORMULARIO RENTA SOCIEDADES-1 (.xlsx)",
+    type=["xlsx"]
+)
 
-if uploaded_file is not None:
-    
-    # Leer el archivo
-    df = pd.read_excel(uploaded_file, sheet_name=0)
-    
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        
-        # Hoja 1: Formulario original
-        df.to_excel(writer, sheet_name="FORMULARIO RENTA SOCIEDADES-1", index=False)
-        
-        workbook = writer.book
-        worksheet1 = writer.sheets["FORMULARIO RENTA SOCIEDADES-1"]
-        
-        # Crear hoja F101 nueva
-        worksheet2 = workbook.add_worksheet("F101_GENERADO")
-        
-        # Encabezados ejemplo
-        headers = ["Código", "Valor Formulario"]
-        
-        for col_num, header in enumerate(headers):
-            worksheet2.write(0, col_num, header)
-        
-        # Formato encabezado
-        header_format = workbook.add_format({
-            'bold': True,
-            'bg_color': '#D9E1F2',
-            'border': 1
-        })
-        
-        for col_num in range(len(headers)):
-            worksheet2.write(0, col_num, headers[col_num], header_format)
-        
-        # Ejemplo de códigos (puedes adaptar a tus casilleros reales)
-        codigos = [101, 102, 103, 104, 105]
-        
-        for row_num, codigo in enumerate(codigos, start=1):
-            worksheet2.write(row_num, 0, codigo)
-            
-            # Fórmula BUSCARV dinámica
-            formula = f'=BUSCARV(A{row_num+1},\'FORMULARIO RENTA SOCIEDADES-1\'!A:Q,17,FALSO)'
-            worksheet2.write_formula(row_num, 1, formula)
-        
-        # Ajustar ancho columnas
-        worksheet2.set_column(0, 1, 25)
-        
-        # Fijar encabezado
-        worksheet2.freeze_panes(1, 0)
-    
-    output.seek(0)
-    
-    st.success("Archivo generado correctamente")
-    
-    st.download_button(
-        label="Descargar Excel Generado",
-        data=output,
-        file_name="FORMULARIO_PROCESADO.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+if uploaded_formulario is not None:
+
+    plantilla_path = "CT 2024 f101 ARCTURUS NUEVO.xlsx"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        plantilla_temp = os.path.join(tmpdir, "plantilla.xlsx")
+        formulario_temp = os.path.join(tmpdir, "formulario.xlsx")
+
+        # Guardar archivos temporales
+        with open(formulario_temp, "wb") as f:
+            f.write(uploaded_formulario.read())
+
+        shutil.copy(plantilla_path, plantilla_temp)
+
+        # Cargar plantilla
+        wb = load_workbook(plantilla_temp)
+
+        # Cargar formulario subido
+        wb_form = load_workbook(formulario_temp)
+
+        hoja_form = wb_form.active
+        wb._add_sheet(hoja_form)
+
+        hoja_form.title = "FORMULARIO_SUBIDO"
+
+        # Ahora actualizar fórmulas en F101
+        hoja_f101 = wb["F101"]  # asegúrate que se llame así en tu plantilla
+
+        for row in hoja_f101.iter_rows():
+            for cell in row:
+                if cell.value and isinstance(cell.value, str):
+                    if "Casilleros!" in cell.value:
+                        cell.value = cell.value.replace(
+                            "Casilleros!",
+                            "FORMULARIO_SUBIDO!"
+                        )
+
+        archivo_final = os.path.join(tmpdir, "F101_GENERADO.xlsx")
+        wb.save(archivo_final)
+
+        with open(archivo_final, "rb") as f:
+            st.download_button(
+                "Descargar Excel Generado",
+                f,
+                file_name="F101_GENERADO.xlsx"
+            )
+
+        st.success("Archivo generado con formato original intacto.")
