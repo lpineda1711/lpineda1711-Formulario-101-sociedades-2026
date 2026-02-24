@@ -1,56 +1,52 @@
 import streamlit as st
 from openpyxl import load_workbook
-from openpyxl.worksheet.worksheet import Worksheet
 from io import BytesIO
 
 st.set_page_config(layout="wide")
-st.title("Generador F101 Oficial - Renta Sociedades")
+st.title("Generador Final - Reemplazo F101")
 
-uploaded_formulario = st.file_uploader(
-    "Sube el FORMULARIO RENTA SOCIEDADES-1 (.xlsx)",
+uploaded_f101 = st.file_uploader(
+    "Sube el nuevo F101 (.xlsx)",
     type=["xlsx"]
 )
 
-if uploaded_formulario:
+if uploaded_f101:
 
-    # Cargar plantilla base (debe estar en el repo)
+    # Abrir plantilla base (debe estar en el repo)
     plantilla_path = "CT 2024 f101 ARCTURUS NUEVO.xlsx"
     wb = load_workbook(plantilla_path)
 
-    # Cargar formulario subido
-    wb_form = load_workbook(uploaded_formulario)
-    hoja_form_original = wb_form.active
+    # Eliminar F101 original
+    if "F101" in wb.sheetnames:
+        std = wb["F101"]
+        wb.remove(std)
 
-    # Crear hoja nueva dentro de la plantilla
-    hoja_form = wb.create_sheet("FORMULARIO_SUBIDO")
+    # Cargar el archivo que subes
+    wb_nuevo = load_workbook(uploaded_f101)
+    hoja_nueva = wb_nuevo.active
 
-    # Copiar contenido del formulario a la nueva hoja
-    for row in hoja_form_original.iter_rows():
+    # Crear nueva hoja F101 en la plantilla
+    hoja_f101 = wb.create_sheet("F101")
+
+    # Copiar contenido exactamente
+    for row in hoja_nueva.iter_rows():
         for cell in row:
-            hoja_form[cell.coordinate].value = cell.value
+            hoja_f101[cell.coordinate].value = cell.value
 
-    # ===== MODIFICAR FORMULAS EN F101 =====
-    hoja_f101 = wb["F101"]
+    # Reordenar hojas para que quede:
+    # BC primero, F101 después
+    wb._sheets.sort(key=lambda ws: ws.title != "BC")
 
-    for row in hoja_f101.iter_rows():
-        for cell in row:
-            if isinstance(cell.value, str):
-                if "Casilleros!" in cell.value:
-                    cell.value = cell.value.replace(
-                        "Casilleros!",
-                        "FORMULARIO_SUBIDO!"
-                    )
-
-    # Guardar archivo final
+    # Guardar resultado
     output = BytesIO()
     wb.save(output)
     output.seek(0)
 
-    st.success("Archivo generado con formato original intacto.")
+    st.success("F101 reemplazado correctamente. BC vinculado automáticamente.")
 
     st.download_button(
-        "Descargar F101 generado",
+        "Descargar archivo final",
         data=output,
-        file_name="F101_GENERADO.xlsx",
+        file_name="ARCHIVO_FINAL.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
